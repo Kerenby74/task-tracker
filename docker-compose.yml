@@ -1,0 +1,43 @@
+services:
+  php:
+    build:
+      context: ./
+    working_dir: '/var/www/task-tracker'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      PHP_IDE_CONFIG: "serverName=Task"
+      # Параметры подключения к MySQL
+      DB_HOST: "db"
+      DB_PORT: "3306"
+      DB_NAME: "task_tracker"
+      DB_USER: "root"
+      DB_PASSWORD: "rootpassword"
+    volumes:
+      - ./:/var/www/task-tracker
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.4
+    container_name: task_tracker_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "rootpassword"
+      MYSQL_DATABASE: "task_tracker"
+    ports:
+      # Пробрасываем 3306 наружу, чтобы ты мог подключиться к базе из PhpStorm Database Tool
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      # Скрипт инициализации таблицы при первом старте контейнера
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db_data:
